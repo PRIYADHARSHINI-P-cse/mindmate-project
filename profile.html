@@ -1,0 +1,30 @@
+<script type="module">
+import { auth, db, saveUserProfile, getUserDoc } from "./src/firebase-init.js";
+import { onAuthStateChanged } from "firebase/auth";
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return window.location.href = "./index.html";
+
+  const doc = await getUserDoc(user.uid);
+  if (doc?.profile) {
+    document.getElementById("p-name").value = doc.profile.name || "";
+    document.getElementById("p-dob").value = doc.profile.dob || "";
+    document.getElementById("p-address").value = doc.profile.address || "";
+  }
+});
+
+document.getElementById("profile-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const user = auth.currentUser;
+  if (!user) return alert("Login first");
+
+  const profile = {
+    name: document.getElementById("p-name").value,
+    dob: document.getElementById("p-dob").value,
+    address: document.getElementById("p-address").value,
+  };
+  await saveUserProfile(user.uid, profile);
+  alert("Profile saved!");
+  window.location.href = "./student-dashboard.html";
+});
+</script>

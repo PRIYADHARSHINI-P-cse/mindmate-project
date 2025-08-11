@@ -1,0 +1,50 @@
+import { auth, saveMood, getMoods } from "./src/firebase-init.js";
+import { onAuthStateChanged } from "firebase/auth";
+
+let selectedMood = null;
+document.querySelectorAll(".mood-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    selectedMood = btn.dataset.mood;
+    document.querySelectorAll(".mood-btn").forEach((b) => b.classList.remove("ring-4", "ring-indigo-400"));
+    btn.classList.add("ring-4", "ring-indigo-400");
+  });
+});
+
+document.getElementById("save-mood").addEventListener("click", async () => {
+  if (!selectedMood) return alert("Select a mood first");
+  const note = document.getElementById("mood-note").value;
+  const user = auth.currentUser;
+  if (!user) return alert("Please login first");
+  await saveMood(user.uid, selectedMood, note);
+  alert("Saved!");
+  renderChart();
+});
+
+async function renderChart() {
+  const user = auth.currentUser;
+  if (!user) return;
+  const moods = await getMoods(user.uid);
+  const labels = moods.slice(0, 7).map((m) => {
+    const d = m.ts?.toDate ? m.ts.toDate().toLocaleString() : "";
+    return d || "recent";
+  }).reverse();
+
+  const data = moods.slice(0, 7).map((m) => {
+    const map = { Happy: 4, Neutral: 2, Sad: 1, Anxious: 0 };
+    return map[m.mood] ?? 2;
+  }).reverse();
+
+  const ctx = document.getElementById("moodChart").getContext("2d");
+  if (window._moodChart) window._moodChart.destroy();
+  window._moodChart = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets: [{ label: "Mood (higher = better)", data, fill: true }] },
+    options: { maintainAspectRatio: false, scales: { y: { min: 0, max: 4 } } },
+  });
+}
+
+onAuthStateChanged(auth, (user) => {
+  if (user) setTimeout(renderChart, 500);
+});
+
+
